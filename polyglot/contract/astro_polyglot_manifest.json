@@ -1,0 +1,63 @@
+{
+  "contract_version": "1.0.0",
+  "logical_width": 960,
+  "logical_height": 720,
+  "aspect_policy": "fit-letterbox",
+  "shared_tick_hz": 60,
+  "modules": [
+    {
+      "language": "C",
+      "role": "runtime_host",
+      "path": "include/config.h",
+      "responsibility": "Publishes the contract version, logical size, tick rate, and native SDL2 runtime settings."
+    },
+    {
+      "language": "C++",
+      "role": "renderer_adapter",
+      "path": "polyglot/cpp-renderer/astro_render_adapter.cpp",
+      "responsibility": "Shares the same viewport math for native render backends and engine ports."
+    },
+    {
+      "language": "C#",
+      "role": "gameplay_bridge",
+      "path": "polyglot/csharp-gameplay/AstroGameplayBridge.cs",
+      "responsibility": "Defines gameplay command DTOs for MonoGame/FNA/Unity/Godot tooling."
+    },
+    {
+      "language": "Java",
+      "role": "asset_pipeline",
+      "path": "polyglot/java-assets/AstroAssetPipeline.java",
+      "responsibility": "Validates asset metadata before assets are consumed by runtime modules."
+    },
+    {
+      "language": "Python",
+      "role": "orchestrator",
+      "path": "polyglot/python-orchestrator/astro_polyglot_orchestrator.py",
+      "responsibility": "Coordinates contract validation and data exchange across all language modules."
+    },
+    {
+      "language": "JavaScript/TypeScript",
+      "role": "ui_overlay",
+      "path": "polyglot/typescript-ui/astroHudBridge.ts",
+      "responsibility": "Consumes frame snapshots for web/debug HUD overlays."
+    },
+    {
+      "language": "Rust",
+      "role": "physics_module",
+      "path": "polyglot/rust-physics/src_lib.rs",
+      "responsibility": "Provides deterministic collision/aspect helpers that can be exported through FFI/WASM."
+    },
+    {
+      "language": "Go",
+      "role": "telemetry_service",
+      "path": "polyglot/go-telemetry/astro_telemetry.go",
+      "responsibility": "Packages score/session telemetry from shared snapshots."
+    },
+    {
+      "language": "Lua",
+      "role": "mission_scripting",
+      "path": "polyglot/lua-missions/mission_rules.lua",
+      "responsibility": "Defines mission rules and wave modifiers loaded from shared state."
+    }
+  ]
+}

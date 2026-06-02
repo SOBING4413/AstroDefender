@@ -239,20 +239,21 @@ The current C/SDL build stores login state locally and prepares/logs Supabase au
 
 ---
 
-## Multi-language Development
+## Polyglot Development
 
-AstroDefender is no longer documented as a C-only development path. The primary runtime remains C/SDL2, but the repository includes multi-language examples for common game-development ecosystems:
+AstroDefender is no longer documented as a C-only development path. The primary executable remains C/SDL2, but the repository now includes a coordinated `polyglot/` workspace where each language has a mandatory role in the same game pipeline instead of living as isolated examples:
 
-- C++ with SDL2-style render targets
-- C# with MonoGame/FNA-style destination rectangles
-- Java with libGDX `FitViewport`
-- Python with pygame-ce logical surfaces
-- JavaScript/TypeScript with Canvas/Phaser-style presentation
-- Rust helpers suitable for Bevy, macroquad, ggez, or SDL2 bindings
-- Go helpers suitable for Ebiten
-- Lua helpers suitable for LÖVE
+- C hosts the SDL2 runtime and publishes the shared contract in `include/config.h`.
+- C++ owns native renderer adapter math for engine/native ports.
+- C# carries gameplay DTOs/bridges for MonoGame/FNA/Unity/Godot tooling.
+- Java validates asset metadata against the shared contract.
+- Python orchestrates contract validation and CI checks.
+- JavaScript/TypeScript renders web/debug HUD overlays from runtime snapshots.
+- Rust provides FFI/WASM-ready physics and collision helpers.
+- Go packages score/session telemetry.
+- Lua defines mission and wave rules.
 
-See `docs/MULTILANGUAGE_GAMEDEV.md` for recommended project structure, framework choices, and FFI/scripting integration guidance. See `examples/multilanguage/` for minimal aspect-ratio-safe snippets in each supported language.
+See `polyglot/README.md` and `docs/MULTILANGUAGE_GAMEDEV.md` for the shared contract, module responsibilities, and integration flow. Run `python3 tools/verify_polyglot_contract.py` to verify that all language modules are still synchronized.
 
 ---
 ## Optional Retro Font

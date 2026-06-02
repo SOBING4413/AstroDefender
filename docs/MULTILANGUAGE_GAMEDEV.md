@@ -1,52 +1,54 @@
-# Multi-language Game Development Guide
+# Polyglot Game Development Guide
 
-AstroDefender tetap memakai build utama C/SDL2, tetapi desainnya sekarang dapat diperlakukan sebagai **logical gameplay core** berukuran 960x720 yang dipresentasikan ke layar dengan viewport proporsional. Pendekatan yang sama dapat dipakai di bahasa lain: render dunia ke kanvas tetap, lalu salin ke backbuffer/window menggunakan letterbox atau pillarbox agar aspect ratio tidak berubah.
+AstroDefender tidak diposisikan sebagai proyek C-only. Build utama tetap C/SDL2, tetapi pengembangan multi-bahasa dilakukan melalui **satu kontrak polyglot bersama**, bukan potongan contoh yang berdiri sendiri.
 
-## Struktur proyek yang direkomendasikan
+Kontrak resmi ada di `polyglot/contract/astro_polyglot_manifest.json`. Semua modul C, C++, C#, Java, Python, JavaScript/TypeScript, Rust, Go, dan Lua wajib membaca atau mereplikasi nilai kontrak yang sama: logical canvas 960x720, aspect policy `fit-letterbox`, dan tick rate 60 Hz.
+
+## Struktur polyglot wajib
 
 ```text
 AstroDefender/
-├─ src/                         # C/SDL2 runtime utama
-├─ include/                     # Konstanta, tipe, dan API internal C
-├─ docs/MULTILANGUAGE_GAMEDEV.md
-└─ examples/multilanguage/
-   ├─ cpp/                      # C++ + SDL2/SDL3, raylib, atau SFML
-   ├─ csharp/                   # C# + MonoGame, FNA, Unity, atau Godot C#
-   ├─ java/                     # Java + libGDX
-   ├─ python/                   # Python + pygame-ce atau arcade
-   ├─ javascript-typescript/    # TypeScript + Phaser, PixiJS, atau Three.js
-   ├─ rust/                     # Rust + Bevy, macroquad, SDL2 bindings
-   ├─ go/                       # Go + Ebiten
-   └─ lua/                      # Lua + LÖVE
+├─ include/config.h                         # C runtime contract constants
+├─ src/                                     # SDL2 host executable
+├─ polyglot/
+│  ├─ contract/astro_polyglot_manifest.json # sumber kebenaran lintas bahasa
+│  ├─ cpp-renderer/                         # C++ renderer adapter
+│  ├─ csharp-gameplay/                      # C# gameplay DTO/bridge
+│  ├─ java-assets/                          # Java asset validation pipeline
+│  ├─ python-orchestrator/                  # Python contract orchestration
+│  ├─ typescript-ui/                        # TS web/debug HUD bridge
+│  ├─ rust-physics/                         # Rust FFI/WASM-ready physics helpers
+│  ├─ go-telemetry/                         # Go telemetry payload service
+│  └─ lua-missions/                         # Lua mission rules
+└─ tools/verify_polyglot_contract.py        # CI-friendly contract check
 ```
 
-## Pola fullscreen yang harus dipakai semua bahasa
+## Alur kerja yang saling berkesinambungan
 
-1. Simpan ukuran dunia virtual, misalnya `LOGICAL_WIDTH = 960` dan `LOGICAL_HEIGHT = 720`.
+1. **C runtime** menjalankan game, menyimpan ukuran logical 960x720, dan mempresentasikan fullscreen secara proporsional.
+2. **C++ renderer adapter** memakai kontrak yang sama untuk native renderer/engine port agar hasil viewport identik dengan C runtime.
+3. **Rust physics module** menyediakan helper collision/aspect yang dapat diekspor via FFI/WASM saat runtime atau tooling membutuhkan determinisme tambahan.
+4. **Lua mission scripting** mengubah rules wave dari snapshot state tanpa mengubah host runtime.
+5. **C# gameplay bridge** membawa snapshot/command ke editor tooling MonoGame/FNA/Unity/Godot.
+6. **Java asset pipeline** memvalidasi metadata aset agar sesuai versi kontrak sebelum dikemas.
+7. **TypeScript HUD bridge** membaca snapshot runtime untuk overlay/debug web.
+8. **Go telemetry service** mengemas skor, level, dan session data untuk leaderboard/analytics.
+9. **Python orchestrator** memastikan semua modul masih berada di versi kontrak yang sama dan menjadi entry point automasi CI.
+
+## Pola fullscreen yang dipakai semua modul
+
+1. Simpan ukuran dunia virtual, `LOGICAL_WIDTH = 960` dan `LOGICAL_HEIGHT = 720`.
 2. Hitung `scale = min(screen_width / LOGICAL_WIDTH, screen_height / LOGICAL_HEIGHT)`.
-3. Hitung ukuran viewport: `viewport_width = LOGICAL_WIDTH * scale`, `viewport_height = LOGICAL_HEIGHT * scale`.
-4. Posisikan viewport di tengah layar.
-5. Render game ke logical canvas atau logical camera, lalu present/copy ke viewport tersebut.
-6. Jangan memaksa lebar dan tinggi layar secara independen karena itu akan membuat game gepeng/terdistorsi.
+3. Hitung viewport tengah: `viewport_width = LOGICAL_WIDTH * scale`, `viewport_height = LOGICAL_HEIGHT * scale`.
+4. Render game ke logical canvas/framebuffer/camera, lalu present ke viewport tersebut.
+5. Area sisa menjadi letterbox/pillarbox. Jangan melakukan stretch X/Y terpisah.
 
-## Library/framework relevan per bahasa
+## Verifikasi CI
 
-| Bahasa | Framework yang cocok | Catatan integrasi |
-| --- | --- | --- |
-| C++ | SDL2/SDL3, SFML, raylib, Unreal Engine | Cocok untuk port native dan berbagi aset dengan build C. |
-| C# | MonoGame, FNA, Unity, Godot C# | Cocok untuk tooling editor, gameplay scripting, dan prototipe cepat. |
-| Java | libGDX, jMonkeyEngine | Cocok untuk desktop/Android dengan pipeline aset matang. |
-| Python | pygame-ce, arcade, Panda3D | Cocok untuk prototyping AI, balancing, dan tools pipeline. |
-| JavaScript/TypeScript | Phaser, PixiJS, Three.js | Cocok untuk web build, UI, dan deployment browser. |
-| Rust | Bevy, macroquad, ggez, SDL2 bindings | Cocok untuk safety, ECS modern, dan native/web via WASM. |
-| Go | Ebiten, raylib-go | Cocok untuk binary kecil dan loop game sederhana. |
-| Lua | LÖVE, Defold, Solar2D | Cocok untuk scripting ringan dan modding. |
+Jalankan:
 
-## Integrasi antar bahasa
+```bash
+python3 tools/verify_polyglot_contract.py
+```
 
-- **Shared data:** simpan konfigurasi level, wave, skor, dan balancing di JSON/TOML agar semua bahasa dapat membaca data yang sama.
-- **Native bridge:** untuk memakai core C dari C++, C#, Python, Rust, Go, atau Java, expose API C kecil seperti `astro_init`, `astro_update`, dan `astro_snapshot`, lalu gunakan FFI (`ctypes`, P/Invoke, JNI, cgo, Rust FFI).
-- **Scripting:** gunakan Lua atau JavaScript untuk rules/mission scripting, tetapi biarkan renderer memakai pola logical canvas yang sama.
-- **Assets:** gunakan folder aset bersama (`assets/`) dan hindari path absolut agar setiap runtime mudah menjalankan contoh.
-
-Lihat contoh minimal di `examples/multilanguage/*/aspect_fit.*` untuk implementasi per bahasa.
+Check ini gagal jika salah satu modul bahasa tidak membawa marker `ASTRO_POLYGLOT_CONTRACT_VERSION: 1.0.0` sesuai manifest.
