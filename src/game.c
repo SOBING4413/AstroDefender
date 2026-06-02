@@ -989,7 +989,6 @@ void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
                 ctx->online_email[len - 1] = '\0';
             }
             break;
-
         case STATE_GAMEOVER:
             if (ctx->name_entry_active) {
                 if (key == SDLK_RETURN && ctx->input_len > 0) {
