@@ -1,144 +1,284 @@
-=============================================================
-  ASTRODEFENDER
-  Classic Space Shooter - Windows / Visual Studio
-  Version 1.0
-=============================================================
+# AstroDefender
 
-CONCEPT
--------
-AstroDefender is a faithful reimagining of the classic space
-invader genre, built entirely in C using SDL2. Wave after wave
-of alien invaders descend from above. You are the last line of
-defense. Survive, score, and climb the leaderboard.
+**Classic Space Shooter built with C + SDL2**
+**Version 1.0**
 
-The game features:
-  - 4 distinct enemy types with animated procedural sprites
-  - Progressive difficulty across unlimited levels
-  - Mystery bonus ship worth 500 points
-  - Persistent local high score table (top 8 entries)
-  - Parallax star field background
-  - Particle explosion effects
-  - Invincibility frames after being hit
-  - Pause / resume support
-  - Runs at a locked 60 FPS
+---
 
+## Overview
 
-REQUIREMENTS
-------------
-  - Windows 10 or 11 (64-bit)
-  - Visual Studio Community 2022 (or newer)
-    Install workload: "Desktop development with C++"
-  - Internet connection (for first-time dependency setup)
+**AstroDefender** is a modern reimagining of the classic *Space Invaders* arcade experience, developed entirely in **C** using **SDL2**. Defend Earth against endless waves of alien invaders, survive increasingly difficult levels, and compete for a place on the local high-score leaderboard.
 
+### Features
 
-QUICK START
------------
-1. Run setup_deps.bat
-   Double-click it. It downloads SDL2, SDL2_ttf, and SDL2_mixer
-   from their official GitHub releases into the deps\ folder.
-   This takes about 30-60 seconds.
+* 4 unique enemy classes with procedural animated sprites
+* Endless progression with increasing difficulty
+* Mystery Bonus Ship worth **500 points**
+* Persistent local high-score table (Top 8)
+* Parallax starfield background
+* Particle-based explosion effects
+* Temporary invincibility after taking damage
+* Pause and resume functionality
+* Smooth gameplay locked at **60 FPS**
 
-2. Open the solution
-   Double-click AstroDefender.sln in Visual Studio.
+---
 
-3. Build
-   Press Ctrl+Shift+B  (or Build > Build Solution).
-   Output: bin\Release\AstroDefender.exe
+## System Requirements
 
-4. Run
-   Press F5 (Debug) or Ctrl+F5 (Run without debugger).
-   The .exe is also runnable directly from bin\Release\.
+### Operating System
 
+* Windows 10 (64-bit) or newer
+* Windows 11 (64-bit)
 
-PROJECT STRUCTURE
------------------
-AstroDefender\
-  AstroDefender.sln          Visual Studio solution
-  setup_deps.bat             Dependency downloader (run first)
-  README.txt                 This file
-  |
-  +-- src\
-  |     main.c               Entry point, SDL2 init/teardown
-  |     game.c               Game logic, state machine, AI, physics
-  |     renderer.c           All drawing code (procedural sprites)
-  |
-  +-- include\
-  |     config.h             All tunable constants in one place
-  |     types.h              Shared data structures
-  |     game.h               Game module interface
-  |     renderer.h           Renderer module interface
-  |
-  +-- AstroDefender\
-  |     AstroDefender.vcxproj  VS project file
-  |
-  +-- resources\
-  |     resource.rc          Windows resource (icon, version info)
-  |     icon.ico             Application icon (16/32/48 px)
-  |
-  +-- assets\
-  |     fonts\               Optional: place PressStart2P.ttf here
-  |                          (falls back to system Consolas if absent)
-  |
-  +-- deps\                  Created by setup_deps.bat
-        SDL2\
-        SDL2_ttf\
-        SDL2_mixer\
+### Development Environment
 
+* Visual Studio Community 2022 or later
+* Workload: **Desktop Development with C++**
 
-CONTROLS
---------
-  Left Arrow / A     Move ship left
-  Right Arrow / D    Move ship right
-  Space              Fire
-  P / Escape         Pause / Resume
-  Q (while paused)   Quit to main menu
-  H (main menu)      View high scores
-  Enter              Confirm / advance screens
+### Additional Requirements
 
+* Internet connection (required only for initial dependency download)
 
-ENEMY TYPES & SCORING
----------------------
-  Crawler   (green,  bottom rows)  -  10 points
-  Crab      (blue,   mid rows)     -  20 points
-  Drone     (cyan,   upper rows)   -  30 points
-  Commander (purple, top row)      -  50 points
-  Bonus Ship (orange, crosses top) - 500 points
+---
 
+## Quick Start
 
-GAMEPLAY NOTES
---------------
-- Enemies speed up significantly as their numbers decrease.
-- Difficulty increases each level (faster movement, faster bullets).
-- If any enemy reaches your ship's altitude, the game ends.
-- You have 3 lives. After a hit, you are invincible for 2 seconds.
-- High scores are saved to astrodefender.sav next to the .exe.
+### 1. Install Dependencies
 
+Run:
 
-OPTIONAL: PIXEL FONT
---------------------
-For the authentic retro look, download "Press Start 2P" from:
-  https://fonts.google.com/specimen/Press+Start+2P
+```bat
+setup_deps.bat
+```
 
-Place PressStart2P-Regular.ttf renamed to PressStart2P.ttf in:
-  assets\fonts\PressStart2P.ttf
+This script automatically downloads:
 
-The game will pick it up automatically. Without it, it uses
-Consolas (or Lucida Console) from your Windows installation.
+* SDL2
+* SDL2_ttf
+* SDL2_mixer
 
+from their official GitHub releases and places them inside the `deps/` directory.
 
-CONFIGURATION
--------------
-All game parameters (speed, difficulty, scoring, screen size)
-are centralized in include\config.h. Recompile after changes.
+> Initial setup typically takes 30–60 seconds depending on connection speed.
 
+### 2. Open the Solution
 
-BUILD CONFIGURATION
--------------------
-  Debug   - Includes debug symbols, console window visible
-  Release - Optimized, no console window (SubSystem=Windows)
+Open:
 
-Both configurations copy required DLLs to the output folder
-automatically via the PostBuildEvent in the project file.
+```text
+AstroDefender.sln
+```
 
+using Visual Studio.
 
-=============================================================
+### 3. Build the Project
+
+Use one of the following:
+
+```text
+Ctrl + Shift + B
+```
+
+or:
+
+```text
+Build → Build Solution
+```
+
+Generated executable:
+
+```text
+bin/Release/AstroDefender.exe
+```
+
+### 4. Run the Game
+
+```text
+F5
+```
+
+Run with debugger
+
+or
+
+```text
+Ctrl + F5
+```
+
+Run without debugger
+
+You can also launch the executable directly from:
+
+```text
+bin/Release/
+```
+
+---
+
+## Project Structure
+
+```text
+AstroDefender/
+│
+├── AstroDefender.sln
+├── setup_deps.bat
+├── README.md
+│
+├── src/
+│   ├── main.c
+│   ├── game.c
+│   └── renderer.c
+│
+├── include/
+│   ├── config.h
+│   ├── types.h
+│   ├── game.h
+│   └── renderer.h
+│
+├── AstroDefender/
+│   └── AstroDefender.vcxproj
+│
+├── resources/
+│   ├── resource.rc
+│   └── icon.ico
+│
+├── assets/
+│   └── fonts/
+│       └── PressStart2P.ttf (optional)
+│
+└── deps/
+    ├── SDL2/
+    ├── SDL2_ttf/
+    └── SDL2_mixer/
+```
+
+### Directory Details
+
+| Directory    | Purpose                                        |
+| ------------ | ---------------------------------------------- |
+| `src/`       | Core game logic and rendering                  |
+| `include/`   | Shared headers and configuration               |
+| `resources/` | Windows resources and application icon         |
+| `assets/`    | Optional fonts and future game assets          |
+| `deps/`      | Third-party libraries downloaded automatically |
+
+---
+
+## Controls
+
+| Key     | Action                           |
+| ------- | -------------------------------- |
+| ← / A   | Move Left                        |
+| → / D   | Move Right                       |
+| Space   | Fire Weapon                      |
+| P / Esc | Pause / Resume                   |
+| Q       | Quit to Main Menu (while paused) |
+| H       | View High Scores                 |
+| Enter   | Confirm / Continue               |
+
+---
+
+## Enemy Types & Scoring
+
+| Enemy      | Description                 | Score |
+| ---------- | --------------------------- | ----- |
+| Crawler    | Green, lower formation rows | 10    |
+| Crab       | Blue, middle rows           | 20    |
+| Drone      | Cyan, upper rows            | 30    |
+| Commander  | Purple, top row             | 50    |
+| Bonus Ship | Orange mystery ship         | 500   |
+
+---
+
+## Gameplay Notes
+
+* Enemy movement accelerates as their numbers decrease.
+* Every new level increases enemy speed and projectile speed.
+* The game ends immediately if an invader reaches the player's altitude.
+* Players begin with **3 lives**.
+* After taking damage, the ship becomes invulnerable for **2 seconds**.
+* High scores are saved automatically to:
+
+```text
+astrodefender.sav
+```
+
+located beside the executable.
+
+---
+
+## Optional Retro Font
+
+For an authentic arcade appearance, install the **Press Start 2P** font.
+
+Download:
+
+https://fonts.google.com/specimen/Press+Start+2P
+
+Place the file as:
+
+```text
+assets/fonts/PressStart2P.ttf
+```
+
+The game loads it automatically if available.
+
+If not found, AstroDefender falls back to:
+
+* Consolas
+* Lucida Console
+
+---
+
+## Configuration
+
+All gameplay tuning parameters are centralized in:
+
+```text
+include/config.h
+```
+
+Examples:
+
+* Screen resolution
+* Enemy movement speed
+* Difficulty scaling
+* Scoring values
+* Gameplay timing
+
+After modifying values, rebuild the project.
+
+---
+
+## Build Configurations
+
+### Debug
+
+* Debug symbols enabled
+* Console window visible
+* Ideal for development and troubleshooting
+
+### Release
+
+* Optimized compiler settings
+* No console window
+* Windows subsystem enabled
+
+Both configurations automatically copy required SDL DLLs to the output directory using the project's Post-Build Event.
+
+---
+
+## Credits
+
+Developed using:
+
+* SDL2
+* SDL2_ttf
+* SDL2_mixer
+* Visual Studio 2022
+
+Inspired by the golden age of arcade space shooters.
+
+---
+
+**Defend Earth. Survive the invasion. Chase the high score.**
