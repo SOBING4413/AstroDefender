@@ -30,10 +30,16 @@ void Game_SpawnExplosion(GameContext* ctx, float x, float y,
 int  Game_RectOverlap(float ax, float ay, int aw, int ah,
                       float bx, float by, int bw, int bh);
 
+/* Audio feedback */
+void Game_PlayTone(int frequency, int duration_ms, int volume);
+const char* Game_DifficultyName(Difficulty difficulty);
+const char* Game_AchievementName(int id);
+const char* Game_AchievementDescription(int id);
+
 /* Persistence */
 void Scores_Load(ScoreTable* table);
 void Scores_Save(const ScoreTable* table);
 int  Scores_IsHighScore(const ScoreTable* table, int score);
-void Scores_Insert(ScoreTable* table, const char* name, int score, int level);
+void Scores_Insert(ScoreTable* table, const char* name, int score, int level, int difficulty);
 
 #endif /* ASTRODEFENDER_GAME_H */
