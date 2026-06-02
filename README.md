@@ -226,7 +226,7 @@ located beside the executable.
 
 ## Display & Online Setup
 
-The Settings screen supports windowed, exclusive fullscreen, borderless fullscreen, minimized, resizable windows, resolution presets, and keyboard-based custom width/height adjustments. The renderer keeps a 960x720 logical canvas so the UI scales consistently across window sizes.
+The Settings screen supports windowed, exclusive fullscreen, borderless fullscreen, minimized, resizable windows, resolution presets, and keyboard-based custom width/height adjustments. The renderer now draws gameplay to a fixed 960x720 logical framebuffer and presents it through an aspect-fit viewport, so fullscreen and unusual monitor sizes use letterbox/pillarbox margins instead of stretching or flattening the game.
 
 Online mode is Supabase-ready. Set these environment variables before launching to provide project configuration:
 
@@ -236,6 +236,23 @@ ASTRO_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 The current C/SDL build stores login state locally and prepares/logs Supabase auth and leaderboard payloads without blocking gameplay; adding a concrete HTTP transport such as WinHTTP/libcurl can use the existing online status and sync hooks.
+
+---
+
+## Multi-language Development
+
+AstroDefender is no longer documented as a C-only development path. The primary runtime remains C/SDL2, but the repository includes multi-language examples for common game-development ecosystems:
+
+- C++ with SDL2-style render targets
+- C# with MonoGame/FNA-style destination rectangles
+- Java with libGDX `FitViewport`
+- Python with pygame-ce logical surfaces
+- JavaScript/TypeScript with Canvas/Phaser-style presentation
+- Rust helpers suitable for Bevy, macroquad, ggez, or SDL2 bindings
+- Go helpers suitable for Ebiten
+- Lua helpers suitable for LÖVE
+
+See `docs/MULTILANGUAGE_GAMEDEV.md` for recommended project structure, framework choices, and FFI/scripting integration guidance. See `examples/multilanguage/` for minimal aspect-ratio-safe snippets in each supported language.
 
 ---
 ## Optional Retro Font
