@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
     SDL_Renderer* renderer = SDL_CreateRenderer(
         window,
         -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE
     );
 
     if (!renderer) {
@@ -65,8 +65,12 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    /* Set logical render size for consistent scaling */
-    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+    /*
+     * Game_Run renders to a fixed-size logical framebuffer and presents it
+     * with aspect-ratio-preserving letterboxing/pillarboxing. Avoid SDL logical
+     * size here so fullscreen, borderless, and custom window sizes share one
+     * predictable scaling path.
+     */
 
     /* Run the game */
     Game_Run(window, renderer);
