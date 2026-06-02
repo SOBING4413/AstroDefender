@@ -257,12 +257,30 @@ void Renderer_DrawBonusShip(SDL_Renderer* r, const GameContext* ctx, Uint32 tick
         Uint8 on = ((ticks/120+l)%4 == 0) ? 255 : 60;
         Renderer_DrawFilledRect(r, x+8+l*10, y+h-7, 5, 4, on, on/2, 0, 220);
     }
-    Renderer_DrawText(r, NULL, NULL, 0, 0, 0, 0, 0, 0, 0); /* No-op: bonus text in HUD */
 }
 
 /* -------------------------------------------------------
  * Particles
  * ------------------------------------------------------- */
+void Renderer_DrawPowerUps(SDL_Renderer* r, const GameContext* ctx, Uint32 ticks) {
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    for (int i = 0; i < MAX_POWERUPS; i++) {
+        const PowerUp* p = &ctx->powerups[i];
+        if (!p->active) continue;
+        int x = (int)p->pos.x, y = (int)p->pos.y;
+        Uint8 cr = 80, cg = 255, cb = 220;
+        if (p->type == POWERUP_RAPID_FIRE) { cr = 255; cg = 220; cb = 60; }
+        else if (p->type == POWERUP_DOUBLE_SHOT) { cr = 180; cg = 80; cb = 255; }
+        else if (p->type == POWERUP_REPAIR) { cr = 80; cg = 255; cb = 120; }
+        Uint8 pulse = (Uint8)(120 + (ticks / 4) % 100);
+        Renderer_DrawFilledRect(r, x-11, y-11, 22, 22, cr, cg, cb, 70);
+        SDL_SetRenderDrawColor(r, cr, cg, cb, 255);
+        SDL_Rect box = {x-8, y-8, 16, 16};
+        SDL_RenderDrawRect(r, &box);
+        Renderer_DrawFilledRect(r, x-3, y-3, 6, 6, pulse, 255, 255, 230);
+    }
+}
+
 void Renderer_DrawParticles(SDL_Renderer* r, const GameContext* ctx) {
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
     for (int i = 0; i < MAX_PARTICLES; i++) {
@@ -280,6 +298,15 @@ void Renderer_DrawParticles(SDL_Renderer* r, const GameContext* ctx) {
 /* -------------------------------------------------------
  * HUD
  * ------------------------------------------------------- */
+void Renderer_DrawFloatingText(SDL_Renderer* r, const RendererState* rs, const GameContext* ctx) {
+    for (int i = 0; i < MAX_FLOATING_TEXTS; i++) {
+        const FloatingText* ft = &ctx->floating_texts[i];
+        if (!ft->active) continue;
+        Uint8 alpha = (Uint8)((ft->life > 60 ? 60 : ft->life) * 4);
+        Renderer_DrawText(r, rs->font_small, ft->text, (int)ft->pos.x, (int)ft->pos.y, ft->r, ft->g, ft->b, alpha, 0);
+    }
+}
+
 void Renderer_DrawHUD(SDL_Renderer* r, const RendererState* rs,
                       const GameContext* ctx, Uint32 ticks) {
     char buf[80];
@@ -298,7 +325,10 @@ void Renderer_DrawHUD(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 12, 120, 160, 200, 255, 1);
 
     snprintf(buf, sizeof(buf), "LVL %02d", ctx->level);
-    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH-100, 12, 180, 220, 255, 255, 0);
+    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH-128, 12, 180, 220, 255, 255, 0);
+
+    snprintf(buf, sizeof(buf), "%s", Game_DifficultyName(ctx->difficulty));
+    Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH-150, 30, 255, 190, 80, 230, 0);
 
     /* Lives */
     for (int i = 0; i < ctx->player.lives; i++) {
@@ -312,8 +342,13 @@ void Renderer_DrawHUD(SDL_Renderer* r, const RendererState* rs,
     /* Bottom bar */
     Renderer_DrawFilledRect(r, 0, SCREEN_HEIGHT-36, SCREEN_WIDTH, 36, 0, 8, 24, 210);
     dline(r, 0, SCREEN_HEIGHT-36, SCREEN_WIDTH, SCREEN_HEIGHT-36, 0, 60, 100);
-    Renderer_DrawText(r, rs->font_small, "ARROWS/AD:Move  SPACE:Fire  P:Pause",
-                      SCREEN_WIDTH/2, SCREEN_HEIGHT-24, 80, 110, 140, 200, 1);
+    snprintf(buf, sizeof(buf), "COMBO x%d   %s", ctx->combo, ctx->status_timer > 0 ? ctx->status_message : "ARROWS/AD MOVE  SPACE FIRE  P PAUSE");
+    Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH/2, SCREEN_HEIGHT-24, 80, 220, 255, 220, 1);
+
+    int bx = SCREEN_WIDTH - 250;
+    if (ctx->player.shield_active) Renderer_DrawText(r, rs->font_small, "SHIELD", bx, SCREEN_HEIGHT-24, 80, 220, 255, 230, 0);
+    if (SDL_GetTicks() < ctx->player.rapid_until) Renderer_DrawText(r, rs->font_small, "RAPID", bx+70, SCREEN_HEIGHT-24, 255, 220, 60, 230, 0);
+    if (SDL_GetTicks() < ctx->player.double_shot_until) Renderer_DrawText(r, rs->font_small, "DOUBLE", bx+135, SCREEN_HEIGHT-24, 180, 80, 255, 230, 0);
 
     if (ctx->life_lost_flash > 0) {
         Renderer_DrawFilledRect(r, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -335,26 +370,39 @@ void Renderer_DrawMenu(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawText(r, rs->font_large, "ASTRO",    SCREEN_WIDTH/2, 180, tgr, tgg, tgb, 255, 1);
     Renderer_DrawText(r, rs->font_large, "DEFENDER", SCREEN_WIDTH/2, 224, tgr, tgg, tgb, 255, 1);
     Renderer_DrawText(r, rs->font_small, "DEFEND EARTH FROM THE ALIEN INVASION",
-                      SCREEN_WIDTH/2, 290, 120, 160, 200, 200, 1);
+                      SCREEN_WIDTH/2, 286, 120, 160, 200, 200, 1);
 
     dline(r, SCREEN_WIDTH/2-160, 316, SCREEN_WIDTH/2+160, 316, 0, 80, 140);
 
+    Renderer_DrawText(r, rs->font_medium, "SELECT DIFFICULTY", SCREEN_WIDTH/2, 344, 180, 220, 255, 255, 1);
+    const char* names[] = {"EASY", "NORMAL", "HARD", "NIGHTMARE"};
+    for (int i = 0; i < DIFFICULTY_COUNT; i++) {
+        Uint8 cr = ((int)ctx->difficulty == i) ? 255 : 100;
+        Uint8 cg = ((int)ctx->difficulty == i) ? 220 : 140;
+        Uint8 cb = ((int)ctx->difficulty == i) ? 60 : 180;
+        char dbuf[32];
+        snprintf(dbuf, sizeof(dbuf), "%s%s", ((int)ctx->difficulty == i) ? "> " : "  ", names[i]);
+        Renderer_DrawText(r, rs->font_small, dbuf, SCREEN_WIDTH/2 - 90 + i * 70, 384, cr, cg, cb, 255, 0);
+    }
     if ((ticks/500)%2 == 0)
-        Renderer_DrawText(r, rs->font_medium, "PRESS ENTER TO START",
-                          SCREEN_WIDTH/2, 360, 0, 220, 255, 255, 1);
+        Renderer_DrawText(r, rs->font_medium, "PRESS ENTER TO LAUNCH", SCREEN_WIDTH/2, 430, 0, 220, 255, 255, 1);
 
-    Renderer_DrawText(r, rs->font_small, "[H] HIGH SCORES",  SCREEN_WIDTH/2, 420, 100, 140, 180, 200, 1);
-    Renderer_DrawText(r, rs->font_small, "[ESC] QUIT",        SCREEN_WIDTH/2, 450, 100, 140, 180, 200, 1);
+    Renderer_DrawText(r, rs->font_small, "[UP/DOWN] DIFFICULTY  [H] SCORES  [A] ACHIEVEMENTS  [O] SETTINGS  [T] TUTORIAL",
+                      SCREEN_WIDTH/2, 468, 100, 140, 180, 220, 1);
+    char daily[96];
+    snprintf(daily, sizeof(daily), "DAILY CHALLENGE: BEST RUN %07d", ctx->stats.daily_best);
+    Renderer_DrawText(r, rs->font_small, daily, SCREEN_WIDTH/2, 516, 255, 190, 80, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "[ESC] QUIT", SCREEN_WIDTH/2, 492, 100, 140, 180, 200, 1);
 
     /* Enemy legend */
-    int lx = SCREEN_WIDTH/2 - 100, ly = 502;
+    int lx = SCREEN_WIDTH/2 - 100, ly = 535;
     Renderer_DrawText(r, rs->font_small, "CRAWLER  = 10 pts", lx, ly,    80, 255, 120, 220, 0);
     Renderer_DrawText(r, rs->font_small, "CRAB     = 20 pts", lx, ly+24, 0,  220, 255, 220, 0);
     Renderer_DrawText(r, rs->font_small, "DRONE    = 30 pts", lx, ly+48, 80, 200, 255, 220, 0);
     Renderer_DrawText(r, rs->font_small, "COMMANDER= 50 pts", lx, ly+72, 180, 80, 255, 220, 0);
     Renderer_DrawText(r, rs->font_small, "BONUS SHIP= 500 pts", lx, ly+96, 255, 160, 40, 220, 0);
 
-    Renderer_DrawText(r, rs->font_small, "v1.0", SCREEN_WIDTH-40, SCREEN_HEIGHT-20, 60, 80, 100, 180, 0);
+    Renderer_DrawText(r, rs->font_small, "v2.0 POLISHED", SCREEN_WIDTH-150, SCREEN_HEIGHT-20, 60, 80, 100, 180, 0);
 }
 
 void Renderer_DrawGame(SDL_Renderer* r, const RendererState* rs,
@@ -362,9 +410,11 @@ void Renderer_DrawGame(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawStars(r, ctx);
     Renderer_DrawEnemies(r, ctx, ticks);
     Renderer_DrawBonusShip(r, ctx, ticks);
+    Renderer_DrawPowerUps(r, ctx, ticks);
     Renderer_DrawBullets(r, ctx);
     Renderer_DrawPlayer(r, ctx, ticks);
     Renderer_DrawParticles(r, ctx);
+    Renderer_DrawFloatingText(r, rs, ctx);
     Renderer_DrawHUD(r, rs, ctx, ticks);
 }
 
@@ -375,6 +425,7 @@ void Renderer_DrawPause(SDL_Renderer* r, const RendererState* rs, const GameCont
     Renderer_DrawText(r, rs->font_large, "PAUSED", SCREEN_WIDTH/2, SCREEN_HEIGHT/2-70, 0, 220, 255, 255, 1);
     Renderer_DrawText(r, rs->font_small, "[P] RESUME",       SCREEN_WIDTH/2, SCREEN_HEIGHT/2+10, 180, 220, 255, 220, 1);
     Renderer_DrawText(r, rs->font_small, "[Q] QUIT TO MENU", SCREEN_WIDTH/2, SCREEN_HEIGHT/2+38, 180, 220, 255, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "[O] SETTINGS", SCREEN_WIDTH/2, SCREEN_HEIGHT/2+66, 180, 220, 255, 220, 1);
 }
 
 void Renderer_DrawGameOver(SDL_Renderer* r, const RendererState* rs,
@@ -438,8 +489,8 @@ void Renderer_DrawHighScores(SDL_Renderer* r, const RendererState* rs,
             if (i==0) { cr=255; cg=220; cb=0; }
             else if (i==1) { cr=200; cg=200; cb=200; }
             else if (i==2) { cr=200; cg=140; cb=80; }
-            snprintf(buf, sizeof(buf), "%d.  %-12s  %07d  LVL %02d",
-                     i+1, e->name, e->score, e->level);
+            snprintf(buf, sizeof(buf), "%d.  %-12s  %07d  LVL %02d  %s",
+                     i+1, e->name, e->score, e->level, Game_DifficultyName((Difficulty)e->difficulty));
             Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 152+i*44, cr, cg, cb, 255, 1);
         }
     }
@@ -447,4 +498,66 @@ void Renderer_DrawHighScores(SDL_Renderer* r, const RendererState* rs,
     if ((ticks/500)%2 == 0)
         Renderer_DrawText(r, rs->font_small, "PRESS ENTER OR ESC TO RETURN",
                           SCREEN_WIDTH/2, SCREEN_HEIGHT-60, 80, 120, 160, 200, 1);
+}
+
+void Renderer_DrawAchievements(SDL_Renderer* r, const RendererState* rs,
+                               const GameContext* ctx, Uint32 ticks) {
+    Renderer_DrawStars(r, ctx);
+    Renderer_DrawText(r, rs->font_large, "ACHIEVEMENTS", SCREEN_WIDTH/2, 70, 0, 220, 255, 255, 1);
+    dline(r, SCREEN_WIDTH/2-230, 122, SCREEN_WIDTH/2+230, 122, 0, 80, 120);
+
+    for (int i = 0; i < ACH_COUNT; i++) {
+        int y = 160 + i * 72;
+        int unlocked = ctx->achievements.unlocked[i];
+        Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-310, y-12, 620, 48,
+                                  unlocked ? 12 : 4, unlocked ? 40 : 16, unlocked ? 48 : 28,
+                                  unlocked ? 0 : 70, unlocked ? 220 : 90, unlocked ? 255 : 120);
+        Renderer_DrawText(r, rs->font_medium, Game_AchievementName(i), SCREEN_WIDTH/2-285, y,
+                          unlocked ? 255 : 90, unlocked ? 220 : 120, unlocked ? 80 : 150, 255, 0);
+        Renderer_DrawText(r, rs->font_small, Game_AchievementDescription(i), SCREEN_WIDTH/2-285, y+24,
+                          unlocked ? 180 : 80, unlocked ? 220 : 110, unlocked ? 255 : 140, 220, 0);
+        Renderer_DrawText(r, rs->font_small, unlocked ? "UNLOCKED" : "LOCKED", SCREEN_WIDTH/2+210, y+12,
+                          unlocked ? 80 : 140, unlocked ? 255 : 140, unlocked ? 120 : 140, 230, 0);
+    }
+
+    char stat[128];
+    snprintf(stat, sizeof(stat), "GAMES %d  KILLS %d  WAVES %d  BEST COMBO %d  BONUS %d",
+             ctx->stats.games_played, ctx->stats.enemies_destroyed, ctx->stats.waves_cleared,
+             ctx->stats.best_combo, ctx->stats.bonus_destroyed);
+    Renderer_DrawText(r, rs->font_small, stat, SCREEN_WIDTH/2, SCREEN_HEIGHT-92, 120, 180, 220, 220, 1);
+    if ((ticks/500)%2 == 0)
+        Renderer_DrawText(r, rs->font_small, "PRESS ENTER OR ESC TO RETURN", SCREEN_WIDTH/2, SCREEN_HEIGHT-60, 80, 120, 160, 200, 1);
+}
+
+void Renderer_DrawSettings(SDL_Renderer* r, const RendererState* rs,
+                           const GameContext* ctx, Uint32 ticks) {
+    (void)ticks;
+    Renderer_DrawStars(r, ctx);
+    Renderer_DrawText(r, rs->font_large, "SETTINGS", SCREEN_WIDTH/2, 100, 0, 220, 255, 255, 1);
+    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-260, 180, 520, 260, 0, 18, 50, 0, 100, 160);
+
+    char buf[96];
+    snprintf(buf, sizeof(buf), "SFX VOLUME: %3d%%   [LEFT/RIGHT]", ctx->settings.sfx_volume);
+    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 230, 180, 220, 255, 255, 1);
+    snprintf(buf, sizeof(buf), "MUSIC: %s   [M]", ctx->settings.music_volume > 0 ? "ON" : "OFF");
+    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 280, 180, 220, 255, 255, 1);
+    snprintf(buf, sizeof(buf), "SCREEN SHAKE: %s   [S]", ctx->settings.screen_shake ? "ON" : "OFF");
+    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 330, 180, 220, 255, 255, 1);
+    Renderer_DrawText(r, rs->font_small, "ENTER/ESC: SAVE AND RETURN", SCREEN_WIDTH/2, 395, 100, 140, 180, 220, 1);
+}
+
+void Renderer_DrawTutorial(SDL_Renderer* r, const RendererState* rs,
+                           const GameContext* ctx, Uint32 ticks) {
+    (void)ctx;
+    Renderer_DrawStars(r, ctx);
+    Renderer_DrawText(r, rs->font_large, "PILOT BRIEFING", SCREEN_WIDTH/2, 82, 0, 220, 255, 255, 1);
+    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-345, 145, 690, 390, 0, 18, 50, 0, 100, 160);
+    Renderer_DrawText(r, rs->font_small, "MOVE with ARROWS or A/D. Hold SPACE to fire.", SCREEN_WIDTH/2, 185, 180, 220, 255, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Destroy invaders quickly to build combos and bonus score.", SCREEN_WIDTH/2, 225, 180, 220, 255, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Collect power-ups: Shield, Rapid Fire, Double Shot, and Repair.", SCREEN_WIDTH/2, 265, 180, 220, 255, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Random events can boost scores, increase danger, or rain rewards.", SCREEN_WIDTH/2, 305, 180, 220, 255, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Harder difficulties raise speed, enemy fire, event pressure, and rewards.", SCREEN_WIDTH/2, 345, 255, 210, 80, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Pause anytime with P or ESC.", SCREEN_WIDTH/2, 385, 180, 220, 255, 230, 1);
+    if ((ticks/500)%2 == 0)
+        Renderer_DrawText(r, rs->font_medium, "PRESS ENTER TO START", SCREEN_WIDTH/2, 475, 0, 220, 255, 255, 1);
 }

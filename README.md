@@ -1,7 +1,7 @@
 # AstroDefender
 
 **Classic Space Shooter built with C + SDL2**
-**Version 1.0**
+**Version 2.0**
 
 ---
 
@@ -11,14 +11,16 @@
 
 ### Features
 
-* 4 unique enemy classes with procedural animated sprites
-* Endless progression with increasing difficulty
-* Mystery Bonus Ship worth **500 points**
-* Persistent local high-score table (Top 8)
-* Parallax starfield background
-* Particle-based explosion effects
-* Temporary invincibility after taking damage
-* Pause and resume functionality
+* 4 selectable difficulty levels: **Easy**, **Normal**, **Hard**, and **Nightmare**
+* Endless wave progression with scaling enemy speed, enemy fire rate, and rewards
+* Combo scoring, score milestones, floating score feedback, and achievement rewards
+* Power-ups: Shield, Rapid Fire, Double Shot, and Repair
+* Random in-run events such as Meteor Storm, Score Surge, and Power Drift
+* Mystery Bonus Ship worth high-value rewards and guaranteed power-up drops
+* Persistent local high-score table (Top 8), player statistics, daily challenge best score, achievements, and settings
+* Modernized menu, HUD, settings, achievement, tutorial, pause, and scoreboard screens
+* Parallax starfield, particle explosions, glow feedback, and optional screen shake
+* Lightweight procedural sound feedback with configurable SFX volume
 * Smooth gameplay locked at **60 FPS**
 
 ---
@@ -174,6 +176,10 @@ AstroDefender/
 | P / Esc | Pause / Resume                   |
 | Q       | Quit to Main Menu (while paused) |
 | H       | View High Scores                 |
+| A       | View Achievements (main menu)    |
+| O       | Open Settings                    |
+| T       | View Tutorial                    |
+| ↑ / ↓   | Select Difficulty (main menu)    |
 | Enter   | Confirm / Continue               |
 
 ---
@@ -194,10 +200,13 @@ AstroDefender/
 
 * Enemy movement accelerates as their numbers decrease.
 * Every new level increases enemy speed and projectile speed.
+* Difficulty changes player lives, enemy speed, enemy fire frequency, projectile speed, event pressure, and score rewards.
+* Quick consecutive kills extend the combo window and add bonus points.
+* Every score milestone grants bonus points and drops a power-up.
+* Random events periodically alter the arena: score rewards may surge, the background may accelerate during meteor pressure, or power-up drops may become more common.
 * The game ends immediately if an invader reaches the player's altitude.
-* Players begin with **3 lives**.
-* After taking damage, the ship becomes invulnerable for **2 seconds**.
-* High scores are saved automatically to:
+* After taking damage, the ship becomes invulnerable for **2 seconds** unless a shield absorbs the hit.
+* High scores, statistics, achievements, and settings are saved automatically to:
 
 ```text
 astrodefender.sav
@@ -282,3 +291,20 @@ Inspired by the golden age of arcade space shooters.
 ---
 
 **Defend Earth. Survive the invasion. Chase the high score.**
+
+
+## New in Version 2.0
+
+* Added difficulty selection before launch with Easy, Normal, Hard, and Nightmare balancing.
+* Added progression systems: combos, milestones, achievements, daily challenge best tracking, persistent player statistics, and reward feedback.
+* Added collectible power-ups and random events for replay variety.
+* Added tutorial, settings, achievements, and enhanced high-score UI screens.
+* Reworked persistence with a versioned save format and backward compatibility for older score files.
+* Improved reliability by removing blocking delays during gameplay updates and adding SDL logging around save/audio failures.
+
+## Future Roadmap
+
+* Add authored background music tracks and richer layered sound effects.
+* Add boss waves, daily challenge rule presets, and named local mission objectives.
+* Add gamepad support and configurable key bindings.
+* Add sprite/texture asset packs while keeping procedural rendering as a fallback.
