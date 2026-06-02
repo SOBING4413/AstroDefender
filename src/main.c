@@ -8,7 +8,6 @@
 
 #include <SDL.h>
 #include <SDL_ttf.h>
-#include <SDL_mixer.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,12 +33,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    /* Initialize SDL_mixer for audio */
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) {
-        SDL_Log("Mix_OpenAudio failed: %s", Mix_GetError());
-        /* Non-fatal: game runs without audio */
-    }
-
     /* Create window */
     SDL_Window* window = SDL_CreateWindow(
         WINDOW_TITLE,
@@ -47,7 +40,7 @@ int main(int argc, char* argv[])
         SDL_WINDOWPOS_CENTERED,
         SCREEN_WIDTH,
         SCREEN_HEIGHT,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
 
     if (!window) {
@@ -76,12 +69,11 @@ int main(int argc, char* argv[])
     SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     /* Run the game */
-    Game_Run(renderer);
+    Game_Run(window, renderer);
 
     /* Cleanup */
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    Mix_CloseAudio();
     TTF_Quit();
     SDL_Quit();
 
