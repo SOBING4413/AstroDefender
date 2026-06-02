@@ -556,7 +556,7 @@ void Renderer_DrawSettings(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 380, 180, 220, 255, 255, 1);
     snprintf(buf, sizeof(buf), "SIZE: %dx%d   [R] PRESET  [Z/X] WIDTH  [C/V] HEIGHT", ctx->settings.window_width, ctx->settings.window_height);
     Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH/2, 430, 180, 220, 255, 255, 1);
-    Renderer_DrawText(r, rs->font_small, "Window is resizable; fullscreen/windowed/borderless/minimize are applied immediately.", SCREEN_WIDTH/2, 468, 100, 140, 180, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "Aspect-fit fullscreen keeps 960x720 gameplay proportional with letterbox margins.", SCREEN_WIDTH/2, 468, 100, 140, 180, 220, 1);
     Renderer_DrawText(r, rs->font_small, "ENTER/ESC: SAVE AND RETURN", SCREEN_WIDTH/2, 492, 100, 140, 180, 220, 1);
 }
 

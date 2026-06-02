@@ -18,6 +18,12 @@
 #define TARGET_FPS          60
 #define FRAME_DELAY_MS      (1000 / TARGET_FPS)
 
+/* Polyglot integration contract shared by C/C++/C#/Java/Python/TypeScript/Rust/Go/Lua modules.
+ * ASTRO_POLYGLOT_CONTRACT_VERSION: 1.0.0
+ */
+#define ASTRO_POLYGLOT_CONTRACT_VERSION "1.0.0"
+#define ASTRO_POLYGLOT_ASPECT_POLICY    "fit-letterbox"
+
 /* -------------------------------------------------------
  * Player
  * ------------------------------------------------------- */

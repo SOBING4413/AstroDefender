@@ -226,7 +226,7 @@ located beside the executable.
 
 ## Display & Online Setup
 
-The Settings screen supports windowed, exclusive fullscreen, borderless fullscreen, minimized, resizable windows, resolution presets, and keyboard-based custom width/height adjustments. The renderer keeps a 960x720 logical canvas so the UI scales consistently across window sizes.
+The Settings screen supports windowed, exclusive fullscreen, borderless fullscreen, minimized, resizable windows, resolution presets, and keyboard-based custom width/height adjustments. The renderer now draws gameplay to a fixed 960x720 logical framebuffer and presents it through an aspect-fit viewport, so fullscreen and unusual monitor sizes use letterbox/pillarbox margins instead of stretching or flattening the game.
 
 Online mode is Supabase-ready. Set these environment variables before launching to provide project configuration:
 
@@ -236,6 +236,24 @@ ASTRO_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 The current C/SDL build stores login state locally and prepares/logs Supabase auth and leaderboard payloads without blocking gameplay; adding a concrete HTTP transport such as WinHTTP/libcurl can use the existing online status and sync hooks.
+
+---
+
+## Polyglot Development
+
+AstroDefender is no longer documented as a C-only development path. The primary executable remains C/SDL2, but the repository now includes a coordinated `polyglot/` workspace where each language has a mandatory role in the same game pipeline instead of living as isolated examples:
+
+- C hosts the SDL2 runtime and publishes the shared contract in `include/config.h`.
+- C++ owns native renderer adapter math for engine/native ports.
+- C# carries gameplay DTOs/bridges for MonoGame/FNA/Unity/Godot tooling.
+- Java validates asset metadata against the shared contract.
+- Python orchestrates contract validation and CI checks.
+- JavaScript/TypeScript renders web/debug HUD overlays from runtime snapshots.
+- Rust provides FFI/WASM-ready physics and collision helpers.
+- Go packages score/session telemetry.
+- Lua defines mission and wave rules.
+
+See `polyglot/README.md` and `docs/MULTILANGUAGE_GAMEDEV.md` for the shared contract, module responsibilities, and integration flow. Run `python3 tools/verify_polyglot_contract.py` to verify that all language modules are still synchronized.
 
 ---
 ## Optional Retro Font

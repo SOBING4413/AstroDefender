@@ -175,6 +175,37 @@ static void supabase_sync_score(GameContext* ctx)
              "Score sync prepared for Supabase REST endpoint");
 }
 
+static SDL_Rect calculate_aspect_fit_viewport(int output_w, int output_h)
+{
+    SDL_Rect viewport = { 0, 0, output_w, output_h };
+    if (output_w <= 0 || output_h <= 0) return viewport;
+
+    float scale_x = (float)output_w / (float)SCREEN_WIDTH;
+    float scale_y = (float)output_h / (float)SCREEN_HEIGHT;
+    float scale = (scale_x < scale_y) ? scale_x : scale_y;
+
+    viewport.w = (int)((float)SCREEN_WIDTH * scale + 0.5f);
+    viewport.h = (int)((float)SCREEN_HEIGHT * scale + 0.5f);
+    viewport.x = (output_w - viewport.w) / 2;
+    viewport.y = (output_h - viewport.h) / 2;
+    return viewport;
+}
+
+static void present_logical_frame(SDL_Renderer* renderer, SDL_Texture* logical_frame)
+{
+    int output_w = SCREEN_WIDTH;
+    int output_h = SCREEN_HEIGHT;
+    SDL_GetRendererOutputSize(renderer, &output_w, &output_h);
+    SDL_Rect viewport = calculate_aspect_fit_viewport(output_w, output_h);
+
+    SDL_SetRenderTarget(renderer, NULL);
+    SDL_RenderSetViewport(renderer, NULL);
+    SDL_SetRenderDrawColor(renderer, COLOR_BG);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, logical_frame, NULL, &viewport);
+    SDL_RenderPresent(renderer);
+}
+
 static void apply_display_settings(SDL_Window* window, const Settings* settings)
 {
     if (!window || !settings) return;
@@ -182,6 +213,7 @@ static void apply_display_settings(SDL_Window* window, const Settings* settings)
     if (idx < 0 || idx >= resolution_count()) idx = 0;
     int target_w = settings->window_width > 0 ? settings->window_width : RESOLUTION_PRESETS[idx].width;
     int target_h = settings->window_height > 0 ? settings->window_height : RESOLUTION_PRESETS[idx].height;
+
     SDL_SetWindowFullscreen(window, 0);
     SDL_SetWindowBordered(window, SDL_TRUE);
     SDL_RestoreWindow(window);
@@ -189,12 +221,17 @@ static void apply_display_settings(SDL_Window* window, const Settings* settings)
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
     switch ((DisplayMode)settings->display_mode) {
-        case DISPLAY_FULLSCREEN:
+        case DISPLAY_FULLSCREEN: {
+            SDL_DisplayMode display_mode;
+            int display_index = SDL_GetWindowDisplayIndex(window);
+            if (SDL_GetDesktopDisplayMode(display_index, &display_mode) == 0) {
+                SDL_SetWindowDisplayMode(window, &display_mode);
+            }
             SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
             break;
+        }
         case DISPLAY_BORDERLESS:
-            SDL_SetWindowBordered(window, SDL_FALSE);
-            SDL_MaximizeWindow(window);
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
             break;
         case DISPLAY_MINIMIZED:
             SDL_MinimizeWindow(window);
@@ -1040,6 +1077,20 @@ void Game_Run(SDL_Window* window, SDL_Renderer* renderer)
     RendererState rs;
     if (!Renderer_Init(&rs)) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Renderer_Init failed - continuing without text");
 
+    SDL_Texture* logical_frame = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_TARGET,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT
+    );
+    if (!logical_frame) {
+        SDL_Log("SDL_CreateTexture logical framebuffer failed: %s", SDL_GetError());
+        Renderer_Destroy(&rs);
+        return;
+    }
+    SDL_SetTextureBlendMode(logical_frame, SDL_BLENDMODE_NONE);
+
     g_window = window;
 
     GameContext ctx;
@@ -1054,6 +1105,8 @@ void Game_Run(SDL_Window* window, SDL_Renderer* renderer)
         while (SDL_PollEvent(&e)) Game_HandleEvent(&ctx, &e);
         Game_Update(&ctx);
 
+        SDL_SetRenderTarget(renderer, logical_frame);
+        SDL_RenderSetViewport(renderer, NULL);
         SDL_SetRenderDrawColor(renderer, COLOR_BG);
         SDL_RenderClear(renderer);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -1081,13 +1134,14 @@ void Game_Run(SDL_Window* window, SDL_Renderer* renderer)
             default: break;
         }
         SDL_RenderSetViewport(renderer, NULL);
-        SDL_RenderPresent(renderer);
+        present_logical_frame(renderer, logical_frame);
 
         Uint32 elapsed = SDL_GetTicks() - ctx.frame_start;
         if (elapsed < FRAME_DELAY_MS) SDL_Delay(FRAME_DELAY_MS - elapsed);
     }
 
     save_context(&ctx);
+    SDL_DestroyTexture(logical_frame);
     SDL_StopTextInput();
     if (g_audio_device) {
         SDL_CloseAudioDevice(g_audio_device);
