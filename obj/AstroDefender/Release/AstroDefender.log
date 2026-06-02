@@ -1,0 +1,23 @@
+﻿  main.c
+  game.c
+  renderer.c
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 43 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  AstroDefender.vcxproj -> C:\Users\hikam\Downloads\AstroDefender\bin\Release\AstroDefender.exe
+  Invalid number of parameters
+  0 File(s) copied
+  Invalid number of parameters
+  0 File(s) copied
+  Invalid number of parameters
+  0 File(s) copied
+  Invalid number of parameters
+  0 File(s) copied
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073: The command "
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073:         xcopy /Y /D "C:\Users\hikam\Downloads\AstroDefender\AstroDefender\..\deps\SDL2\lib\x64\SDL2.dll"       "C:\Users\hikam\Downloads\AstroDefender\bin\Release\" 2^>nul
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073:         xcopy /Y /D "C:\Users\hikam\Downloads\AstroDefender\AstroDefender\..\deps\SDL2_ttf\lib\x64\SDL2_ttf.dll"  "C:\Users\hikam\Downloads\AstroDefender\bin\Release\" 2^>nul
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073:         xcopy /Y /D "C:\Users\hikam\Downloads\AstroDefender\AstroDefender\..\deps\SDL2_mixer\lib\x64\SDL2_mixer.dll" "C:\Users\hikam\Downloads\AstroDefender\bin\Release\" 2^>nul
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073:         xcopy /Y /D /E "C:\Users\hikam\Downloads\AstroDefender\AstroDefender\..\assets" "C:\Users\hikam\Downloads\AstroDefender\bin\Release\assets\" 2^>nul
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073:       
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v170\Microsoft.CppCommon.targets(166,5): error MSB3073: :VCEnd" exited with code 4.
