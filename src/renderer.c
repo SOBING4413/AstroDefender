@@ -327,8 +327,8 @@ void Renderer_DrawHUD(SDL_Renderer* r, const RendererState* rs,
     snprintf(buf, sizeof(buf), "LVL %02d", ctx->level);
     Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH-128, 12, 180, 220, 255, 255, 0);
 
-    snprintf(buf, sizeof(buf), "%s", Game_DifficultyName(ctx->difficulty));
-    Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH-150, 30, 255, 190, 80, 230, 0);
+    snprintf(buf, sizeof(buf), "%s / %s", Game_ModeName(ctx->game_mode), Game_DifficultyName(ctx->difficulty));
+    Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH-210, 30, 255, 190, 80, 230, 0);
 
     /* Lives */
     for (int i = 0; i < ctx->player.lives; i++) {
@@ -374,7 +374,16 @@ void Renderer_DrawMenu(SDL_Renderer* r, const RendererState* rs,
 
     dline(r, SCREEN_WIDTH/2-160, 316, SCREEN_WIDTH/2+160, 316, 0, 80, 140);
 
-    Renderer_DrawText(r, rs->font_medium, "SELECT DIFFICULTY", SCREEN_WIDTH/2, 344, 180, 220, 255, 255, 1);
+    Renderer_DrawText(r, rs->font_medium, "SELECT MODE", SCREEN_WIDTH/2, 330, 180, 220, 255, 255, 1);
+    const char* modes[] = {"1 ARCADE", "2 STORY", "3 SURVIVAL", "4 BOSS", "5 ONLINE"};
+    for (int m = 0; m < MODE_COUNT; m++) {
+        Uint8 mr = ((int)ctx->game_mode == m) ? 255 : 100;
+        Uint8 mg = ((int)ctx->game_mode == m) ? 220 : 140;
+        Uint8 mb = ((int)ctx->game_mode == m) ? 60 : 180;
+        Renderer_DrawText(r, rs->font_small, modes[m], SCREEN_WIDTH/2 - 220 + m * 92, 362, mr, mg, mb, 255, 0);
+    }
+
+    Renderer_DrawText(r, rs->font_medium, "SELECT DIFFICULTY", SCREEN_WIDTH/2, 398, 180, 220, 255, 255, 1);
     const char* names[] = {"EASY", "NORMAL", "HARD", "NIGHTMARE"};
     for (int i = 0; i < DIFFICULTY_COUNT; i++) {
         Uint8 cr = ((int)ctx->difficulty == i) ? 255 : 100;
@@ -382,20 +391,20 @@ void Renderer_DrawMenu(SDL_Renderer* r, const RendererState* rs,
         Uint8 cb = ((int)ctx->difficulty == i) ? 60 : 180;
         char dbuf[32];
         snprintf(dbuf, sizeof(dbuf), "%s%s", ((int)ctx->difficulty == i) ? "> " : "  ", names[i]);
-        Renderer_DrawText(r, rs->font_small, dbuf, SCREEN_WIDTH/2 - 90 + i * 70, 384, cr, cg, cb, 255, 0);
+        Renderer_DrawText(r, rs->font_small, dbuf, SCREEN_WIDTH/2 - 90 + i * 70, 438, cr, cg, cb, 255, 0);
     }
     if ((ticks/500)%2 == 0)
-        Renderer_DrawText(r, rs->font_medium, "PRESS ENTER TO LAUNCH", SCREEN_WIDTH/2, 430, 0, 220, 255, 255, 1);
+        Renderer_DrawText(r, rs->font_medium, ctx->game_mode == MODE_ONLINE ? "ENTER ONLINE LOBBY" : "PRESS ENTER TO LAUNCH", SCREEN_WIDTH/2, 480, 0, 220, 255, 255, 1);
 
-    Renderer_DrawText(r, rs->font_small, "[UP/DOWN] DIFFICULTY  [H] SCORES  [A] ACHIEVEMENTS  [O] SETTINGS  [T] TUTORIAL",
-                      SCREEN_WIDTH/2, 468, 100, 140, 180, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "[LEFT/RIGHT] MODE  [UP/DOWN] DIFFICULTY  [H] SCORES  [A] ACH  [O] SETTINGS",
+                      SCREEN_WIDTH/2, 515, 100, 140, 180, 220, 1);
     char daily[96];
-    snprintf(daily, sizeof(daily), "DAILY CHALLENGE: BEST RUN %07d", ctx->stats.daily_best);
-    Renderer_DrawText(r, rs->font_small, daily, SCREEN_WIDTH/2, 516, 255, 190, 80, 220, 1);
-    Renderer_DrawText(r, rs->font_small, "[ESC] QUIT", SCREEN_WIDTH/2, 492, 100, 140, 180, 200, 1);
+    snprintf(daily, sizeof(daily), "DAILY BEST %07d   DISPLAY %s", ctx->stats.daily_best, Game_DisplayModeName((DisplayMode)ctx->settings.display_mode));
+    Renderer_DrawText(r, rs->font_small, daily, SCREEN_WIDTH/2, 540, 255, 190, 80, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "[T] TUTORIAL  [ESC] QUIT", SCREEN_WIDTH/2, 565, 100, 140, 180, 200, 1);
 
     /* Enemy legend */
-    int lx = SCREEN_WIDTH/2 - 100, ly = 535;
+    int lx = SCREEN_WIDTH/2 - 100, ly = 600;
     Renderer_DrawText(r, rs->font_small, "CRAWLER  = 10 pts", lx, ly,    80, 255, 120, 220, 0);
     Renderer_DrawText(r, rs->font_small, "CRAB     = 20 pts", lx, ly+24, 0,  220, 255, 220, 0);
     Renderer_DrawText(r, rs->font_small, "DRONE    = 30 pts", lx, ly+48, 80, 200, 255, 220, 0);
@@ -534,7 +543,7 @@ void Renderer_DrawSettings(SDL_Renderer* r, const RendererState* rs,
     (void)ticks;
     Renderer_DrawStars(r, ctx);
     Renderer_DrawText(r, rs->font_large, "SETTINGS", SCREEN_WIDTH/2, 100, 0, 220, 255, 255, 1);
-    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-260, 180, 520, 260, 0, 18, 50, 0, 100, 160);
+    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-310, 160, 620, 350, 0, 18, 50, 0, 100, 160);
 
     char buf[96];
     snprintf(buf, sizeof(buf), "SFX VOLUME: %3d%%   [LEFT/RIGHT]", ctx->settings.sfx_volume);
@@ -543,7 +552,12 @@ void Renderer_DrawSettings(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 280, 180, 220, 255, 255, 1);
     snprintf(buf, sizeof(buf), "SCREEN SHAKE: %s   [S]", ctx->settings.screen_shake ? "ON" : "OFF");
     Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 330, 180, 220, 255, 255, 1);
-    Renderer_DrawText(r, rs->font_small, "ENTER/ESC: SAVE AND RETURN", SCREEN_WIDTH/2, 395, 100, 140, 180, 220, 1);
+    snprintf(buf, sizeof(buf), "DISPLAY: %s   [F/F11]", Game_DisplayModeName((DisplayMode)ctx->settings.display_mode));
+    Renderer_DrawText(r, rs->font_medium, buf, SCREEN_WIDTH/2, 380, 180, 220, 255, 255, 1);
+    snprintf(buf, sizeof(buf), "SIZE: %dx%d   [R] PRESET  [Z/X] WIDTH  [C/V] HEIGHT", ctx->settings.window_width, ctx->settings.window_height);
+    Renderer_DrawText(r, rs->font_small, buf, SCREEN_WIDTH/2, 430, 180, 220, 255, 255, 1);
+    Renderer_DrawText(r, rs->font_small, "Window is resizable; fullscreen/windowed/borderless/minimize are applied immediately.", SCREEN_WIDTH/2, 468, 100, 140, 180, 220, 1);
+    Renderer_DrawText(r, rs->font_small, "ENTER/ESC: SAVE AND RETURN", SCREEN_WIDTH/2, 492, 100, 140, 180, 220, 1);
 }
 
 void Renderer_DrawTutorial(SDL_Renderer* r, const RendererState* rs,
@@ -560,4 +574,35 @@ void Renderer_DrawTutorial(SDL_Renderer* r, const RendererState* rs,
     Renderer_DrawText(r, rs->font_small, "Pause anytime with P or ESC.", SCREEN_WIDTH/2, 385, 180, 220, 255, 230, 1);
     if ((ticks/500)%2 == 0)
         Renderer_DrawText(r, rs->font_medium, "PRESS ENTER TO START", SCREEN_WIDTH/2, 475, 0, 220, 255, 255, 1);
+}
+
+
+void Renderer_DrawOnline(SDL_Renderer* r, const RendererState* rs,
+                         const GameContext* ctx, Uint32 ticks) {
+    Renderer_DrawStars(r, ctx);
+    Renderer_DrawText(r, rs->font_large, "ONLINE HUB", SCREEN_WIDTH/2, 82, 0, 220, 255, 255, 1);
+    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-350, 145, 700, 420, 0, 18, 50, 0, 100, 160);
+
+    Renderer_DrawText(r, rs->font_medium, "SUPABASE LOGIN", SCREEN_WIDTH/2, 185, 255, 220, 80, 255, 1);
+    Renderer_DrawText(r, rs->font_small, "Set ASTRO_SUPABASE_URL and ASTRO_SUPABASE_ANON_KEY to enable real sync plumbing.",
+                      SCREEN_WIDTH/2, 225, 150, 190, 230, 220, 1);
+
+    Renderer_DrawText(r, rs->font_small, "EMAIL:", SCREEN_WIDTH/2-270, 280, 180, 220, 255, 230, 0);
+    Renderer_DrawBorderedRect(r, SCREEN_WIDTH/2-190, 266, 390, 38, 0, 10, 35, 0, 160, 220);
+    char email[96];
+    snprintf(email, sizeof(email), "%s%s", ctx->online_email, ctx->online_input_active && ((ticks/400)%2==0) ? "_" : "");
+    Renderer_DrawText(r, rs->font_small, email[0] ? email : "press E to type email", SCREEN_WIDTH/2-174, 278,
+                      email[0] ? 0 : 90, email[0] ? 255 : 130, email[0] ? 220 : 160, 255, 0);
+
+    Renderer_DrawText(r, rs->font_small, ctx->online_logged_in ? "STATUS: LOGGED IN" : "STATUS: OFFLINE / LOCAL ACCOUNT",
+                      SCREEN_WIDTH/2, 335, ctx->online_logged_in ? 80 : 255, ctx->online_logged_in ? 255 : 180,
+                      ctx->online_logged_in ? 120 : 80, 240, 1);
+    Renderer_DrawText(r, rs->font_small, ctx->online_status, SCREEN_WIDTH/2, 370, 180, 220, 255, 220, 1);
+
+    Renderer_DrawText(r, rs->font_small, "[E] EDIT EMAIL   [ENTER/L] LOGIN   [S] SYNC SCORE   [ENTER after login] START ONLINE RUN",
+                      SCREEN_WIDTH/2, 438, 100, 180, 220, 230, 1);
+    Renderer_DrawText(r, rs->font_small, "Online mode currently prepares Supabase auth/leaderboard payloads without blocking gameplay.",
+                      SCREEN_WIDTH/2, 474, 255, 210, 80, 220, 1);
+    if ((ticks/500)%2 == 0)
+        Renderer_DrawText(r, rs->font_small, "ESC: RETURN TO MENU", SCREEN_WIDTH/2, 522, 80, 120, 160, 220, 1);
 }

@@ -12,13 +12,14 @@
 ### Features
 
 * 4 selectable difficulty levels: **Easy**, **Normal**, **Hard**, and **Nightmare**
+* Game modes: **Arcade**, **Story**, **Survival**, **Boss Rush**, and **Online Hub**
 * Endless wave progression with scaling enemy speed, enemy fire rate, and rewards
 * Combo scoring, score milestones, floating score feedback, and achievement rewards
 * Power-ups: Shield, Rapid Fire, Double Shot, and Repair
 * Random in-run events such as Meteor Storm, Score Surge, and Power Drift
 * Mystery Bonus Ship worth high-value rewards and guaranteed power-up drops
-* Persistent local high-score table (Top 8), player statistics, daily challenge best score, achievements, and settings
-* Modernized menu, HUD, settings, achievement, tutorial, pause, and scoreboard screens
+* Persistent local high-score table (Top 8), player statistics, daily challenge best score, achievements, display settings, and online login state
+* Modernized menu, HUD, display/settings, achievement, tutorial, pause, online, and scoreboard screens
 * Parallax starfield, particle explosions, glow feedback, and optional screen shake
 * Lightweight procedural sound feedback with configurable SFX volume
 * Smooth gameplay locked at **60 FPS**
@@ -179,7 +180,12 @@ AstroDefender/
 | A       | View Achievements (main menu)    |
 | O       | Open Settings                    |
 | T       | View Tutorial                    |
+| ← / →   | Select Game Mode (main menu)     |
 | ↑ / ↓   | Select Difficulty (main menu)    |
+| F/F11   | Cycle/toggle display mode        |
+| R       | Cycle resolution preset          |
+| Z/X     | Decrease/increase window width   |
+| C/V     | Decrease/increase window height  |
 | Enter   | Confirm / Continue               |
 
 ---
@@ -201,12 +207,13 @@ AstroDefender/
 * Enemy movement accelerates as their numbers decrease.
 * Every new level increases enemy speed and projectile speed.
 * Difficulty changes player lives, enemy speed, enemy fire frequency, projectile speed, event pressure, and score rewards.
+* Game modes change run framing: Story tracks chapter objectives, Survival grants more endurance, Boss Rush starts harder, and Online prepares leaderboard sync.
 * Quick consecutive kills extend the combo window and add bonus points.
 * Every score milestone grants bonus points and drops a power-up.
 * Random events periodically alter the arena: score rewards may surge, the background may accelerate during meteor pressure, or power-up drops may become more common.
 * The game ends immediately if an invader reaches the player's altitude.
 * After taking damage, the ship becomes invulnerable for **2 seconds** unless a shield absorbs the hit.
-* High scores, statistics, achievements, and settings are saved automatically to:
+* High scores, statistics, achievements, display preferences, online profile email, and settings are saved automatically to:
 
 ```text
 astrodefender.sav
@@ -216,6 +223,21 @@ located beside the executable.
 
 ---
 
+
+## Display & Online Setup
+
+The Settings screen supports windowed, exclusive fullscreen, borderless fullscreen, minimized, resizable windows, resolution presets, and keyboard-based custom width/height adjustments. The renderer keeps a 960x720 logical canvas so the UI scales consistently across window sizes.
+
+Online mode is Supabase-ready. Set these environment variables before launching to provide project configuration:
+
+```text
+ASTRO_SUPABASE_URL=https://your-project.supabase.co
+ASTRO_SUPABASE_ANON_KEY=your-anon-key
+```
+
+The current C/SDL build stores login state locally and prepares/logs Supabase auth and leaderboard payloads without blocking gameplay; adding a concrete HTTP transport such as WinHTTP/libcurl can use the existing online status and sync hooks.
+
+---
 ## Optional Retro Font
 
 For an authentic arcade appearance, install the **Press Start 2P** font.
@@ -295,15 +317,16 @@ Inspired by the golden age of arcade space shooters.
 
 ## New in Version 2.0
 
-* Added difficulty selection before launch with Easy, Normal, Hard, and Nightmare balancing.
+* Added difficulty and game-mode selection before launch with Easy, Normal, Hard, Nightmare, Arcade, Story, Survival, Boss Rush, and Online balancing.
 * Added progression systems: combos, milestones, achievements, daily challenge best tracking, persistent player statistics, and reward feedback.
 * Added collectible power-ups and random events for replay variety.
-* Added tutorial, settings, achievements, and enhanced high-score UI screens.
+* Added tutorial, display settings, achievements, online hub, and enhanced high-score UI screens.
 * Reworked persistence with a versioned save format and backward compatibility for older score files.
 * Improved reliability by removing blocking delays during gameplay updates and adding SDL logging around save/audio failures.
 
 ## Future Roadmap
 
+* Add a concrete Supabase HTTP transport for cloud login, leaderboard reads/writes, and remote daily missions.
 * Add authored background music tracks and richer layered sound effects.
 * Add boss waves, daily challenge rule presets, and named local mission objectives.
 * Add gamepad support and configurable key bindings.

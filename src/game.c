@@ -37,8 +37,11 @@ typedef struct {
     PlayerStats stats;
     AchievementState achievements;
     Settings settings;
+    char online_email[64];
+    int online_logged_in;
 } SaveData;
 
+static SDL_Window* g_window = NULL;
 static SDL_AudioDeviceID g_audio_device = 0;
 static int g_audio_failed = 0;
 
@@ -48,6 +51,26 @@ static const DifficultyConfig DIFFICULTY_CONFIGS[DIFFICULTY_COUNT] = {
     { "HARD",      0.96f, 1.26f, 1.22f,  78, 135, 3, 125 },
     { "NIGHTMARE", 0.92f, 1.55f, 1.48f,  52, 180, 2, 150 }
 };
+
+typedef struct { int width; int height; const char* label; } ResolutionPreset;
+
+static const ResolutionPreset RESOLUTION_PRESETS[] = {
+    { 960, 720, "960x720" },
+    { 1280, 720, "1280x720" },
+    { 1366, 768, "1366x768" },
+    { 1600, 900, "1600x900" },
+    { 1920, 1080, "1920x1080" }
+};
+
+static const char* MODE_NAMES[MODE_COUNT] = {
+    "ARCADE", "STORY", "SURVIVAL", "BOSS RUSH", "ONLINE"
+};
+
+static const char* DISPLAY_NAMES[DISPLAY_COUNT] = {
+    "WINDOWED", "FULLSCREEN", "BORDERLESS", "MINIMIZED"
+};
+
+static int clamp_int(int value, int min_value, int max_value);
 
 static const char* ACH_NAMES[ACH_COUNT] = {
     "FIRST BLOOD", "COMBO MASTER", "WAVE RIDER", "BONUS HUNTER", "NIGHTMARE ACE"
@@ -65,7 +88,8 @@ static int load_save_data(SaveData* data)
     memset(data, 0, sizeof(*data));
     size_t got = fread(data, 1, sizeof(*data), f);
     fclose(f);
-    return got == sizeof(*data) && data->magic == SAVE_MAGIC && data->version == SAVE_VERSION;
+    return got >= sizeof(unsigned int) * 2 + sizeof(ScoreTable) &&
+           data->magic == SAVE_MAGIC && data->version >= 2 && data->version <= SAVE_VERSION;
 }
 
 static void save_context(const GameContext* ctx)
@@ -78,6 +102,8 @@ static void save_context(const GameContext* ctx)
     data.stats = ctx->stats;
     data.achievements = ctx->achievements;
     data.settings = ctx->settings;
+    snprintf(data.online_email, sizeof(data.online_email), "%s", ctx->online_email);
+    data.online_logged_in = ctx->online_logged_in;
     FILE* f = fopen(SAVE_FILE_NAME, "wb");
     if (!f) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Unable to save %s", SAVE_FILE_NAME);
@@ -87,6 +113,96 @@ static void save_context(const GameContext* ctx)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Failed to write complete save file");
     }
     fclose(f);
+}
+
+
+static int resolution_count(void)
+{
+    return (int)(sizeof(RESOLUTION_PRESETS) / sizeof(RESOLUTION_PRESETS[0]));
+}
+
+static int valid_email(const char* email)
+{
+    const char* at = email ? strchr(email, '@') : NULL;
+    const char* dot = at ? strchr(at, '.') : NULL;
+    return at && dot && at != email && dot > at + 1;
+}
+
+static void supabase_refresh_status(GameContext* ctx)
+{
+    const char* url = SDL_getenv(SUPABASE_URL_ENV);
+    const char* key = SDL_getenv(SUPABASE_KEY_ENV);
+    if (!url || !url[0] || !key || !key[0]) {
+        snprintf(ctx->online_status, sizeof(ctx->online_status),
+                 "Supabase env missing: set %s and %s", SUPABASE_URL_ENV, SUPABASE_KEY_ENV);
+        return;
+    }
+    snprintf(ctx->online_status, sizeof(ctx->online_status),
+             "Supabase ready: %s", ctx->online_logged_in ? "logged in" : "enter email to login");
+}
+
+static void supabase_login(GameContext* ctx)
+{
+    if (!valid_email(ctx->online_email)) {
+        snprintf(ctx->online_status, sizeof(ctx->online_status), "Enter a valid email first");
+        return;
+    }
+    ctx->online_logged_in = 1;
+    ctx->online_sync_pending = 1;
+    snprintf(ctx->online_status, sizeof(ctx->online_status),
+             "Logged in locally as %s; Supabase sync queued", ctx->online_email);
+    SDL_Log("Supabase auth placeholder: magic-link login requested for %s", ctx->online_email);
+}
+
+static void supabase_sync_score(GameContext* ctx)
+{
+    if (!ctx->online_logged_in) {
+        snprintf(ctx->online_status, sizeof(ctx->online_status), "Login before syncing leaderboard data");
+        return;
+    }
+    const char* url = SDL_getenv(SUPABASE_URL_ENV);
+    const char* key = SDL_getenv(SUPABASE_KEY_ENV);
+    if (!url || !url[0] || !key || !key[0]) {
+        supabase_refresh_status(ctx);
+        ctx->online_sync_pending = 1;
+        return;
+    }
+    SDL_Log("Supabase sync payload: email=%s score=%d level=%d mode=%s difficulty=%s",
+            ctx->online_email, ctx->score, ctx->level,
+            Game_ModeName(ctx->game_mode), Game_DifficultyName(ctx->difficulty));
+    ctx->online_sync_pending = 0;
+    snprintf(ctx->online_status, sizeof(ctx->online_status),
+             "Score sync prepared for Supabase REST endpoint");
+}
+
+static void apply_display_settings(SDL_Window* window, const Settings* settings)
+{
+    if (!window || !settings) return;
+    int idx = settings->resolution_index;
+    if (idx < 0 || idx >= resolution_count()) idx = 0;
+    int target_w = settings->window_width > 0 ? settings->window_width : RESOLUTION_PRESETS[idx].width;
+    int target_h = settings->window_height > 0 ? settings->window_height : RESOLUTION_PRESETS[idx].height;
+    SDL_SetWindowFullscreen(window, 0);
+    SDL_SetWindowBordered(window, SDL_TRUE);
+    SDL_RestoreWindow(window);
+    SDL_SetWindowSize(window, target_w, target_h);
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
+    switch ((DisplayMode)settings->display_mode) {
+        case DISPLAY_FULLSCREEN:
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+            break;
+        case DISPLAY_BORDERLESS:
+            SDL_SetWindowBordered(window, SDL_FALSE);
+            SDL_MaximizeWindow(window);
+            break;
+        case DISPLAY_MINIMIZED:
+            SDL_MinimizeWindow(window);
+            break;
+        case DISPLAY_WINDOWED:
+        default:
+            break;
+    }
 }
 
 /* -------------------------------------------------------
@@ -258,11 +374,16 @@ void Game_InitContext(GameContext* ctx)
     ctx->level = 1;
     ctx->enemy_direction = 1;
     ctx->difficulty = DIFFICULTY_NORMAL;
+    ctx->game_mode = MODE_ARCADE;
     ctx->milestone_next_score = SCORE_MILESTONE;
     ctx->settings.music_volume = 45;
     ctx->settings.sfx_volume = 70;
     ctx->settings.screen_shake = 1;
     ctx->settings.show_tutorial = 1;
+    ctx->settings.display_mode = DISPLAY_WINDOWED;
+    ctx->settings.resolution_index = 0;
+    ctx->settings.window_width = SCREEN_WIDTH;
+    ctx->settings.window_height = SCREEN_HEIGHT;
 
     SaveData saved;
     if (load_save_data(&saved)) {
@@ -272,10 +393,17 @@ void Game_InitContext(GameContext* ctx)
         ctx->settings = saved.settings;
         ctx->settings.music_volume = clamp_int(ctx->settings.music_volume, 0, 100);
         ctx->settings.sfx_volume = clamp_int(ctx->settings.sfx_volume, 0, 100);
+        ctx->settings.display_mode = clamp_int(ctx->settings.display_mode, 0, DISPLAY_COUNT - 1);
+        ctx->settings.resolution_index = clamp_int(ctx->settings.resolution_index, 0, resolution_count() - 1);
+        if (ctx->settings.window_width <= 0) ctx->settings.window_width = SCREEN_WIDTH;
+        if (ctx->settings.window_height <= 0) ctx->settings.window_height = SCREEN_HEIGHT;
+        snprintf(ctx->online_email, sizeof(ctx->online_email), "%s", saved.online_email);
+        ctx->online_logged_in = saved.online_logged_in;
     } else {
         Scores_Load(&ctx->scores);
     }
     refresh_daily_challenge(ctx);
+    supabase_refresh_status(ctx);
     if (ctx->scores.count > 0) ctx->hi_score = ctx->scores.entries[0].score;
 
     init_stars(ctx);
@@ -303,12 +431,19 @@ static void reset_run(GameContext* ctx)
     ctx->milestone_next_score = SCORE_MILESTONE;
     ctx->last_reward_points = 0;
     ctx->player.lives = difficulty_config(ctx)->lives;
+    if (ctx->game_mode == MODE_STORY) ctx->story_chapter = clamp_int(ctx->story_chapter + 1, 1, 5);
+    if (ctx->game_mode == MODE_SURVIVAL) ctx->player.lives += 1;
+    if (ctx->game_mode == MODE_BOSS_RUSH) ctx->level = 5;
     refresh_daily_challenge(ctx);
     ctx->stats.games_played++;
     Game_ResetPlayer(ctx);
     Game_StartLevel(ctx);
     ctx->state = ctx->settings.show_tutorial ? STATE_TUTORIAL : STATE_PLAYING;
-    set_status(ctx, "DEFEND EARTH");
+    if (ctx->game_mode == MODE_STORY) set_status(ctx, "STORY: PROTECT THE ORBITAL GATE");
+    else if (ctx->game_mode == MODE_SURVIVAL) set_status(ctx, "SURVIVAL: ENDLESS PRESSURE");
+    else if (ctx->game_mode == MODE_BOSS_RUSH) set_status(ctx, "BOSS RUSH: COMMANDERS INBOUND");
+    else if (ctx->game_mode == MODE_ONLINE) set_status(ctx, "ONLINE RUN: SYNC YOUR SCORE");
+    else set_status(ctx, "DEFEND EARTH");
 }
 
 void Game_StartLevel(GameContext* ctx)
@@ -328,7 +463,8 @@ void Game_StartLevel(GameContext* ctx)
             e->alive = 1;
             e->anim_frame = 0;
             e->anim_timer = 0;
-            if (row == 0) e->type = ENEMY_TYPE_BOSS;
+            if (ctx->game_mode == MODE_BOSS_RUSH && row <= 1) e->type = ENEMY_TYPE_BOSS;
+            else if (row == 0) e->type = ENEMY_TYPE_BOSS;
             else if (row <= 1) e->type = ENEMY_TYPE_C;
             else if (row <= 2) e->type = ENEMY_TYPE_B;
             else e->type = ENEMY_TYPE_A;
@@ -458,6 +594,7 @@ static void enter_game_over(GameContext* ctx)
     if (ctx->score > ctx->stats.daily_best) ctx->stats.daily_best = ctx->score;
     ctx->stats.total_score += ctx->score;
     if (ctx->best_combo_this_run > ctx->stats.best_combo) ctx->stats.best_combo = ctx->best_combo_this_run;
+    if (ctx->game_mode == MODE_ONLINE) supabase_sync_score(ctx);
     update_achievements(ctx);
     if (Scores_IsHighScore(&ctx->scores, ctx->score)) {
         ctx->name_entry_active = 1;
@@ -740,6 +877,8 @@ static void update_playing(GameContext* ctx)
         if (ctx->score > ctx->stats.daily_best) ctx->stats.daily_best = ctx->score;
         ctx->level++;
         ctx->stats.waves_cleared++;
+        if (ctx->game_mode == MODE_STORY) ctx->story_objective++;
+        if (ctx->game_mode == MODE_ONLINE) supabase_sync_score(ctx);
         update_achievements(ctx);
         save_context(ctx);
         ctx->state = STATE_VICTORY;
@@ -774,6 +913,10 @@ void Game_Update(GameContext* ctx)
 void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
 {
     if (e->type == SDL_QUIT) { ctx->running = 0; return; }
+    if (e->type == SDL_WINDOWEVENT && e->window.event == SDL_WINDOWEVENT_RESIZED) {
+        ctx->settings.window_width = e->window.data1;
+        ctx->settings.window_height = e->window.data2;
+    }
 
     if (e->type == SDL_KEYDOWN) {
         SDL_Keycode key = e->key.keysym.sym;
@@ -781,7 +924,17 @@ void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
         case STATE_MENU:
             if (key == SDLK_UP || key == SDLK_w) ctx->difficulty = (Difficulty)((ctx->difficulty + DIFFICULTY_COUNT - 1) % DIFFICULTY_COUNT);
             else if (key == SDLK_DOWN || key == SDLK_s) ctx->difficulty = (Difficulty)((ctx->difficulty + 1) % DIFFICULTY_COUNT);
-            else if (key == SDLK_RETURN || key == SDLK_SPACE) reset_run(ctx);
+            else if (key == SDLK_LEFT) ctx->game_mode = (GameMode)((ctx->game_mode + MODE_COUNT - 1) % MODE_COUNT);
+            else if (key == SDLK_RIGHT) ctx->game_mode = (GameMode)((ctx->game_mode + 1) % MODE_COUNT);
+            else if (key == SDLK_1) ctx->game_mode = MODE_ARCADE;
+            else if (key == SDLK_2) ctx->game_mode = MODE_STORY;
+            else if (key == SDLK_3) ctx->game_mode = MODE_SURVIVAL;
+            else if (key == SDLK_4) ctx->game_mode = MODE_BOSS_RUSH;
+            else if (key == SDLK_5) { ctx->game_mode = MODE_ONLINE; ctx->state = STATE_ONLINE; supabase_refresh_status(ctx); }
+            else if (key == SDLK_RETURN || key == SDLK_SPACE) {
+                if (ctx->game_mode == MODE_ONLINE && !ctx->online_logged_in) { ctx->state = STATE_ONLINE; supabase_refresh_status(ctx); }
+                else reset_run(ctx);
+            }
             else if (key == SDLK_h || key == SDLK_F1) ctx->state = STATE_HIGHSCORES;
             else if (key == SDLK_a) ctx->state = STATE_ACHIEVEMENTS;
             else if (key == SDLK_o) { ctx->menu_selection = STATE_MENU; ctx->state = STATE_SETTINGS; }
@@ -803,11 +956,38 @@ void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
             else if (key == SDLK_o) { ctx->menu_selection = STATE_PAUSED; ctx->state = STATE_SETTINGS; }
             break;
         case STATE_SETTINGS:
-            if (key == SDLK_ESCAPE || key == SDLK_RETURN) { save_context(ctx); ctx->state = (GameState)ctx->menu_selection; }
+            if (key == SDLK_ESCAPE || key == SDLK_RETURN) { save_context(ctx); apply_display_settings(g_window, &ctx->settings); ctx->state = (GameState)ctx->menu_selection; }
             else if (key == SDLK_LEFT || key == SDLK_a) ctx->settings.sfx_volume = clamp_int(ctx->settings.sfx_volume - 10, 0, 100);
             else if (key == SDLK_RIGHT || key == SDLK_d) ctx->settings.sfx_volume = clamp_int(ctx->settings.sfx_volume + 10, 0, 100);
             else if (key == SDLK_m) ctx->settings.music_volume = (ctx->settings.music_volume > 0) ? 0 : 45;
             else if (key == SDLK_s) ctx->settings.screen_shake = !ctx->settings.screen_shake;
+            else if (key == SDLK_f) { ctx->settings.display_mode = (ctx->settings.display_mode + 1) % DISPLAY_COUNT; apply_display_settings(g_window, &ctx->settings); }
+            else if (key == SDLK_r) {
+                ctx->settings.resolution_index = (ctx->settings.resolution_index + 1) % resolution_count();
+                ctx->settings.window_width = RESOLUTION_PRESETS[ctx->settings.resolution_index].width;
+                ctx->settings.window_height = RESOLUTION_PRESETS[ctx->settings.resolution_index].height;
+                apply_display_settings(g_window, &ctx->settings);
+            }
+            else if (key == SDLK_z) { ctx->settings.window_width = clamp_int(ctx->settings.window_width - 80, 640, 3840); apply_display_settings(g_window, &ctx->settings); }
+            else if (key == SDLK_x) { ctx->settings.window_width = clamp_int(ctx->settings.window_width + 80, 640, 3840); apply_display_settings(g_window, &ctx->settings); }
+            else if (key == SDLK_c) { ctx->settings.window_height = clamp_int(ctx->settings.window_height - 45, 480, 2160); apply_display_settings(g_window, &ctx->settings); }
+            else if (key == SDLK_v) { ctx->settings.window_height = clamp_int(ctx->settings.window_height + 45, 480, 2160); apply_display_settings(g_window, &ctx->settings); }
+            else if (key == SDLK_F11) { ctx->settings.display_mode = (ctx->settings.display_mode == DISPLAY_FULLSCREEN) ? DISPLAY_WINDOWED : DISPLAY_FULLSCREEN; apply_display_settings(g_window, &ctx->settings); }
+            break;
+        case STATE_ONLINE:
+            if (key == SDLK_ESCAPE) { ctx->online_input_active = 0; save_context(ctx); ctx->state = STATE_MENU; }
+            else if (key == SDLK_RETURN) {
+                if (ctx->online_input_active) { ctx->online_input_active = 0; supabase_login(ctx); save_context(ctx); }
+                else if (ctx->online_logged_in) { ctx->game_mode = MODE_ONLINE; reset_run(ctx); }
+                else ctx->online_input_active = 1;
+            }
+            else if (key == SDLK_e) ctx->online_input_active = 1;
+            else if (key == SDLK_l) { supabase_login(ctx); save_context(ctx); }
+            else if (key == SDLK_s) supabase_sync_score(ctx);
+            else if (key == SDLK_BACKSPACE && ctx->online_input_active && ctx->online_email[0]) {
+                size_t len = strlen(ctx->online_email);
+                ctx->online_email[len - 1] = '\0';
+            }
             break;
         case STATE_GAMEOVER:
             if (ctx->name_entry_active) {
@@ -837,6 +1017,11 @@ void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
         }
     }
 
+    if (e->type == SDL_TEXTINPUT && ctx->state == STATE_ONLINE && ctx->online_input_active) {
+        size_t len = strlen(ctx->online_email);
+        if (len + strlen(e->text.text) < sizeof(ctx->online_email)) strcat(ctx->online_email, e->text.text);
+    }
+
     if (e->type == SDL_TEXTINPUT && ctx->state == STATE_GAMEOVER && ctx->name_entry_active && ctx->input_len < MAX_NAME_LEN) {
         char c = e->text.text[0];
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-') {
@@ -850,13 +1035,16 @@ void Game_HandleEvent(GameContext* ctx, SDL_Event* e)
  * Main Game Loop
  * ------------------------------------------------------- */
 
-void Game_Run(SDL_Renderer* renderer)
+void Game_Run(SDL_Window* window, SDL_Renderer* renderer)
 {
     RendererState rs;
     if (!Renderer_Init(&rs)) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Renderer_Init failed - continuing without text");
 
+    g_window = window;
+
     GameContext ctx;
     Game_InitContext(&ctx);
+    apply_display_settings(window, &ctx.settings);
     SDL_StartTextInput();
 
     while (ctx.running) {
@@ -889,6 +1077,7 @@ void Game_Run(SDL_Renderer* renderer)
             case STATE_ACHIEVEMENTS: Renderer_DrawAchievements(renderer, &rs, &ctx, ticks); break;
             case STATE_SETTINGS: Renderer_DrawSettings(renderer, &rs, &ctx, ticks); break;
             case STATE_TUTORIAL: Renderer_DrawTutorial(renderer, &rs, &ctx, ticks); break;
+            case STATE_ONLINE: Renderer_DrawOnline(renderer, &rs, &ctx, ticks); break;
             default: break;
         }
         SDL_RenderSetViewport(renderer, NULL);
@@ -905,6 +1094,7 @@ void Game_Run(SDL_Renderer* renderer)
         g_audio_device = 0;
     }
     Renderer_Destroy(&rs);
+    g_window = NULL;
 }
 
 /* -------------------------------------------------------
@@ -933,7 +1123,8 @@ void Scores_Load(ScoreTable* table)
     size_t got = fread(&data, 1, sizeof(data), f);
     fclose(f);
 
-    if (got == sizeof(data) && data.magic == SAVE_MAGIC && data.version == SAVE_VERSION) {
+    if (got >= sizeof(unsigned int) * 2 + sizeof(ScoreTable) &&
+        data.magic == SAVE_MAGIC && data.version >= 2 && data.version <= SAVE_VERSION) {
         *table = data.scores;
     } else if (got >= sizeof(int)) {
         /* Backward compatibility with the original v1 high-score-only file. */
@@ -1004,4 +1195,15 @@ const char* Game_AchievementName(int id)
 const char* Game_AchievementDescription(int id)
 {
     return (id >= 0 && id < ACH_COUNT) ? ACH_DESC[id] : "";
+}
+
+
+const char* Game_ModeName(GameMode mode)
+{
+    return MODE_NAMES[clamp_int((int)mode, 0, MODE_COUNT - 1)];
+}
+
+const char* Game_DisplayModeName(DisplayMode mode)
+{
+    return DISPLAY_NAMES[clamp_int((int)mode, 0, DISPLAY_COUNT - 1)];
 }

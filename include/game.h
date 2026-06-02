@@ -10,7 +10,7 @@
 #include "types.h"
 
 /* Main entry point called from main.c */
-void Game_Run(SDL_Renderer* renderer);
+void Game_Run(SDL_Window* window, SDL_Renderer* renderer);
 
 /* State initializers */
 void Game_InitContext(GameContext* ctx);
@@ -33,6 +33,8 @@ int  Game_RectOverlap(float ax, float ay, int aw, int ah,
 /* Audio feedback */
 void Game_PlayTone(int frequency, int duration_ms, int volume);
 const char* Game_DifficultyName(Difficulty difficulty);
+const char* Game_ModeName(GameMode mode);
+const char* Game_DisplayModeName(DisplayMode mode);
 const char* Game_AchievementName(int id);
 const char* Game_AchievementDescription(int id);
 

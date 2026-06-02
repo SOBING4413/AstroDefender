@@ -24,8 +24,26 @@ typedef enum {
     STATE_HIGHSCORES,
     STATE_ACHIEVEMENTS,
     STATE_SETTINGS,
-    STATE_TUTORIAL
+    STATE_TUTORIAL,
+    STATE_ONLINE
 } GameState;
+
+typedef enum {
+    MODE_ARCADE = 0,
+    MODE_STORY,
+    MODE_SURVIVAL,
+    MODE_BOSS_RUSH,
+    MODE_ONLINE,
+    MODE_COUNT
+} GameMode;
+
+typedef enum {
+    DISPLAY_WINDOWED = 0,
+    DISPLAY_FULLSCREEN,
+    DISPLAY_BORDERLESS,
+    DISPLAY_MINIMIZED,
+    DISPLAY_COUNT
+} DisplayMode;
 
 typedef enum {
     DIFFICULTY_EASY = 0,
@@ -207,6 +225,10 @@ typedef struct {
     int sfx_volume;
     int screen_shake;
     int show_tutorial;
+    int display_mode;
+    int resolution_index;
+    int window_width;
+    int window_height;
 } Settings;
 
 /* -------------------------------------------------------
@@ -220,6 +242,7 @@ typedef struct {
     int         hi_score;
     int         running;
     Difficulty  difficulty;
+    GameMode    game_mode;
     int         menu_selection;
 
     Player      player;
@@ -249,6 +272,11 @@ typedef struct {
     PlayerStats stats;
     AchievementState achievements;
     Settings    settings;
+    char        online_email[64];
+    int         online_input_active;
+    int         online_logged_in;
+    int         online_sync_pending;
+    char        online_status[128];
     char        input_name[MAX_NAME_LEN + 1];
     int         input_len;
     int         name_entry_active;
@@ -260,6 +288,8 @@ typedef struct {
     int         score_multiplier;
     int         milestone_next_score;
     int         last_reward_points;
+    int         story_chapter;
+    int         story_objective;
 
     /* Timing */
     Uint32      frame_start;

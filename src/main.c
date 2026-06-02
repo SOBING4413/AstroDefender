@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
         SDL_WINDOWPOS_CENTERED,
         SCREEN_WIDTH,
         SCREEN_HEIGHT,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
 
     if (!window) {
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     /* Run the game */
-    Game_Run(renderer);
+    Game_Run(window, renderer);
 
     /* Cleanup */
     SDL_DestroyRenderer(renderer);

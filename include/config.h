@@ -98,7 +98,9 @@
  * ------------------------------------------------------- */
 #define SAVE_FILE_NAME      "astrodefender.sav"
 #define SAVE_MAGIC          0x41534432u /* ASD2 */
-#define SAVE_VERSION        2
+#define SAVE_VERSION        3
+#define SUPABASE_URL_ENV    "ASTRO_SUPABASE_URL"
+#define SUPABASE_KEY_ENV    "ASTRO_SUPABASE_ANON_KEY"
 
 /* -------------------------------------------------------
  * Colors (R, G, B, A)
